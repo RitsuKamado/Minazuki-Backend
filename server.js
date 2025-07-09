@@ -37,40 +37,23 @@ const puppeteer = require("puppeteer");
 
 app.get("/api/video/:tmdbId", async (req, res) => {
   const tmdbId = req.params.tmdbId;
-  const embedUrl = `https://hyhd.org/embed/movie/${tmdbId}`;
+  const embedUrl =`https://hyhd.org/embed/movie/${tmdbId}`;
 
   try {
-    // Step 1: Load vidsrc.xyz and extract outer iframe (Cloudnestra)
     const { data } = await axios.get(embedUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
+      headers: { "User-Agent": "Mozilla/5.0" }
     });
 
     const $ = cheerio.load(data);
     let iframeSrc = $("iframe").attr("src");
+
     if (!iframeSrc) return res.status(404).json({ error: "Iframe not found" });
     if (iframeSrc.startsWith("//")) iframeSrc = "https:" + iframeSrc;
-
-    // Step 2: Use Puppeteer to extract the real token from Cloudnestra
-    const browser = await puppeteer.launch({ headless: "new" });
-    const page = await browser.newPage();
-
-    await page.goto(iframeSrc, { waitUntil: "networkidle2" });
-
-    // Simulate the click that loads the iframe
-    await page.click("#pl_but");
-    await page.waitForSelector("#player_iframe", { timeout: 10000 });
-
-    // Extract the full iframe source
-    const tokenizedSrc = await page.$eval("#player_iframe", el => el.src);
-
-    await browser.close();
-
-    // Return the clean iframe
-    res.json({ video: tokenizedSrc });
+    res.json({ video: iframeSrc });
 
   } catch (err) {
     console.error("Scraping error:", err.message);
-    res.status(500).json({ error: "Failed to extract token iframe" });
+    res.status(500).json({ error: "Failed to extract video" });
   }
 });
 app.listen(3001, () => {
