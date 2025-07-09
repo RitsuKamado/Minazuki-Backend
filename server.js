@@ -25,7 +25,7 @@ app.get("/api/search", async (req, res) => {
   const query = req.query.query;
   try {
     const response = await axios.get(
-      `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&page=1`
+      `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&page=1`
     );
     res.json(response.data.results);
   } catch (err) {
@@ -38,6 +38,27 @@ const puppeteer = require("puppeteer");
 app.get("/api/video/:tmdbId", async (req, res) => {
   const tmdbId = req.params.tmdbId;
   const embedUrl =`https://hyhd.org/embed/movie/${tmdbId}`;
+
+  try {
+    const { data } = await axios.get(embedUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+
+    const $ = cheerio.load(data);
+    let iframeSrc = $("iframe").attr("src");
+
+    if (!iframeSrc) return res.status(404).json({ error: "Iframe not found" });
+    if (iframeSrc.startsWith("//")) iframeSrc = "https:" + iframeSrc;
+    res.json({ video: iframeSrc });
+
+  } catch (err) {
+    console.error("Scraping error:", err.message);
+    res.status(500).json({ error: "Failed to extract video" });
+  }
+});
+app.get("/api/tv/:tmdbId", async (req, res) => {
+  const tmdbId = req.params.tmdbId;
+  const embedUrl =`https://hyhd.org/embed/tv/${tmdbId}`;
 
   try {
     const { data } = await axios.get(embedUrl, {
