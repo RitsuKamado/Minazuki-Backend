@@ -56,27 +56,86 @@ app.get("/api/video/:tmdbId", async (req, res) => {
     res.status(500).json({ error: "Failed to extract video" });
   }
 });
-app.get("/api/tv/:tmdbId", async (req, res) => {
+app.get('/api/episodes/:tmdbId', async (req, res) => {
   const tmdbId = req.params.tmdbId;
-  const embedUrl =`https://hyhd.org/embed/tv/${tmdbId}`;
+  const embedUrl = `https://hyhd.org/embed/tv/${tmdbId}`;
+
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.goto(embedUrl, { waitUntil: 'networkidle2' });
 
   try {
-    const { data } = await axios.get(embedUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" }
+    // Wait for the episode list container to load
+    await page.waitForSelector('#eps', { timeout: 10000 });
+
+    // Extract the season and episode data
+    const episodes = await page.evaluate(() => {
+      const eps = [];
+      const items = document.querySelectorAll('#eps .ep');
+      items.forEach(el => {
+        eps.push({
+          season: el.getAttribute('data-s'),
+          episode: el.getAttribute('data-e'),
+          title: el.textContent.trim(),
+          iframe: el.getAttribute('data-iframe'),
+        });
+      });
+      return eps;
     });
 
-    const $ = cheerio.load(data);
-    let iframeSrc = $("iframe").attr("src");
-
-    if (!iframeSrc) return res.status(404).json({ error: "Iframe not found" });
-    if (iframeSrc.startsWith("//")) iframeSrc = "https:" + iframeSrc;
-    res.json({ video: iframeSrc });
+    await browser.close();
+    res.json({ episodes });
 
   } catch (err) {
-    console.error("Scraping error:", err.message);
-    res.status(500).json({ error: "Failed to extract video" });
+    await browser.close();
+    console.error('Puppeteer error:', err.message);
+    res.status(500).json({ error: 'Failed to extract episode data' });
   }
 });
+app.get('/api/tv/:tmdbId', async (req, res) => {
+  const tmdbId = req.params.tmdbId;
+  const { season = 1, episode = 1 } = req.query;
+
+  const embedUrl = `https://hyhd.org/embed/tv?imdb=${tmdbId}&season=${season}&episode=${episode}&color=e600e6`;
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.goto(embedUrl, { waitUntil: 'networkidle2' });
+
+  try {
+    // Wait for source options to load
+    await page.waitForSelector('iframe, .cloudicon, .dropdown, button', { timeout: 10000 });
+
+    // Click the CloudStream Pro button if necessary
+    const cloudStreamSelector = await page.$$eval('button, a', elements =>
+      elements.find(el => el.textContent?.toLowerCase().includes('cloudstream'))
+    );
+
+    if (cloudStreamSelector) {
+      await cloudStreamSelector.click();
+      await page.waitForTimeout(3000); // wait for iframe to load
+    }
+
+    // Now extract the CloudStream iframe
+    const frameSrc = await page.evaluate(() => {
+      const iframe = document.querySelector('iframe');
+      return iframe ? iframe.src : null;
+    });
+
+    await browser.close();
+
+    if (!frameSrc) {
+      return res.status(404).json({ error: 'CloudStream iframe not found' });
+    }
+
+    res.json({ video: frameSrc });
+
+  } catch (err) {
+    await browser.close();
+    console.error('Puppeteer error:', err.message);
+    res.status(500).json({ error: 'Failed to extract CloudStream video' });
+  }
+});
+
 app.listen(3001, () => {
-  console.log("✅ Server running at http://localhost:3001");
+  console.log('✅ Server running at http://localhost:3001');
 });
