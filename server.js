@@ -60,11 +60,19 @@ app.get('/api/episodes/:tmdbId', async (req, res) => {
   const tmdbId = req.params.tmdbId;
   const embedUrl = `https://hyhd.org/embed/tv/${tmdbId}`;
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
+const browser = await puppeteer.launch({
+  headless: true,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',     // add this
+    '--disable-accelerated-2d-canvas',
+    '--no-zygote',
+    '--single-process',
+    '--no-first-run',
+    '--no-default-browser-check'
+  ]
+});
   const page = await browser.newPage();
   await page.goto(embedUrl, { waitUntil: 'networkidle2' });
 
@@ -101,9 +109,18 @@ app.get('/api/tv/:tmdbId', async (req, res) => {
   const { season = 1, episode = 1 } = req.query;
 
   const embedUrl = `https://hyhd.org/embed/tv?imdb=${tmdbId}&season=${season}&episode=${episode}&color=e600e6`;
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+const browser = await puppeteer.launch({
+  headless: true,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',     // add this
+    '--disable-accelerated-2d-canvas',
+    '--no-zygote',
+    '--single-process',
+    '--no-first-run',
+    '--no-default-browser-check'
+  ]
   });
 
   
