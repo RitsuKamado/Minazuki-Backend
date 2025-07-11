@@ -1,6 +1,7 @@
 # dependencies
 /node_modules
 /.pnp
+.push.sh
 .pnp.js
 
 # testing

@@ -9,45 +9,6 @@ require("dotenv").config();
 const app = express();
 app.use(cors());
 const API_KEY = '84TGIfWjI08m6NbYqvevGKgE05bG0QZg';
-const TMDB_API_KEY = process.env.TMDB_API_KEY || "YOUR_TMDB_KEY";
-axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
-
-
-async function getOpenSubtitlesToken() {
-    const response = await axios.post('https://api.opensubtitles.com/api/v1/login', {
-        apikey: API_KEY
-    });
-    return response.data.token;
-}
-app.get('/api/subtitle/:fileId', async (req, res) => {
-    const { fileId } = req.params;
-
-    try {
-        const token = await getOpenSubtitlesToken(); // ✅ Fetch token on demand
-
-        const downloadRes = await axios.post('https://api.opensubtitles.com/api/v1/download', {
-            file_id: fileId
-        }, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        const srtUrl = downloadRes.data.link;
-
-        const srtStream = await axios({
-            url: srtUrl,
-            responseType: 'stream'
-        });
-
-        res.setHeader('Content-Type', 'text/vtt');
-        srtStream.data.pipe(srt2vtt()).pipe(res);
-
-    } catch (err) {
-        console.error("Subtitle download/convert error:", err.message);
-        res.status(500).json({ error: "Failed to fetch subtitle" });
-    }
-});
 
 app.get('/api/subtitles', async (req, res) => {
   const { imdb_id } = req.query;
@@ -62,7 +23,7 @@ app.get('/api/subtitles', async (req, res) => {
         'Api-Key': API_KEY,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'MinazukiApp v1.0.0' // 
+        'User-Agent': 'MinazukiApp v1.0.0' // ✅ Properly formatted
       }
     });
 
@@ -71,7 +32,8 @@ app.get('/api/subtitles', async (req, res) => {
     res.status(err.response?.status || 500).json({ error: err.message });
   }
 });
-
+const TMDB_API_KEY = process.env.TMDB_API_KEY || "YOUR_TMDB_KEY";
+axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
 
 app.get("/api/popular", async (req, res) => {
   try {
@@ -80,7 +42,7 @@ app.get("/api/popular", async (req, res) => {
     );
     res.json(response.data.results);
   } catch (err) {
-    console.error("Popular fetch failed:", err.message);
+    console.error("Popular fetch failed:");
     res.status(500).json({ error: "Failed to fetch popular movies" });
   }
 });
@@ -93,7 +55,7 @@ app.get("/api/search", async (req, res) => {
     );
     res.json(response.data.results);
   } catch (err) {
-    console.error("Search failed:", err.message);
+    console.error("Search failed:");
     res.status(500).json({ error: "Search failed" });
   }
 });
@@ -116,7 +78,7 @@ app.get("/api/video/:tmdbId", async (req, res) => {
     res.json({ video: iframeSrc });
 
   } catch (err) {
-    console.error("Scraping error:", err.message);
+    console.error("Scraping error:");
     res.status(500).json({ error: "Failed to extract video" });
   }
 });
@@ -164,7 +126,7 @@ const browser = await puppeteer.launch({
 
   } catch (err) {
     await browser.close();
-    console.error('Puppeteer error:', err.message);
+    console.error('Puppeteer error:');
     res.status(500).json({ error: 'Failed to extract episode data' });
   }
 });
@@ -221,7 +183,7 @@ const browser = await puppeteer.launch({
 
   } catch (err) {
     await browser.close();
-    console.error('Puppeteer error:', err.message);
+    console.error('Puppeteer error:');
     res.status(500).json({ error: 'Failed to extract CloudStream video' });
   }
 });
@@ -279,7 +241,7 @@ app.get("/api/proxy-hls", async (req, res) => {
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.send(content);
     } catch (err) {
-        console.error("Proxy fetch error:", err.message);
+        console.error("Proxy fetch error:");
         res.status(500).send("Failed to fetch HLS");
     }
 });
