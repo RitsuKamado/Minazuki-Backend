@@ -9,6 +9,45 @@ require("dotenv").config();
 const app = express();
 app.use(cors());
 const API_KEY = '84TGIfWjI08m6NbYqvevGKgE05bG0QZg';
+const TMDB_API_KEY = process.env.TMDB_API_KEY || "YOUR_TMDB_KEY";
+axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
+
+
+async function getOpenSubtitlesToken() {
+    const response = await axios.post('https://api.opensubtitles.com/api/v1/login', {
+        apikey: API_KEY
+    });
+    return response.data.token;
+}
+app.get('/api/subtitle/:fileId', async (req, res) => {
+    const { fileId } = req.params;
+
+    try {
+        const token = await getOpenSubtitlesToken(); // ✅ Fetch token on demand
+
+        const downloadRes = await axios.post('https://api.opensubtitles.com/api/v1/download', {
+            file_id: fileId
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const srtUrl = downloadRes.data.link;
+
+        const srtStream = await axios({
+            url: srtUrl,
+            responseType: 'stream'
+        });
+
+        res.setHeader('Content-Type', 'text/vtt');
+        srtStream.data.pipe(srt2vtt()).pipe(res);
+
+    } catch (err) {
+        console.error("Subtitle download/convert error:", err.message);
+        res.status(500).json({ error: "Failed to fetch subtitle" });
+    }
+});
 
 app.get('/api/subtitles', async (req, res) => {
   const { imdb_id } = req.query;
@@ -32,8 +71,7 @@ app.get('/api/subtitles', async (req, res) => {
     res.status(err.response?.status || 500).json({ error: err.message });
   }
 });
-const TMDB_API_KEY = process.env.TMDB_API_KEY || "YOUR_TMDB_KEY";
-axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
+
 
 app.get("/api/popular", async (req, res) => {
   try {
