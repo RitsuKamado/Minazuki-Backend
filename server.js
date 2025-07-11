@@ -188,28 +188,37 @@ app.get('/api/madplay/movie', async (req, res) => {
     res.status(500).json({ error: 'Error fetching data' });
   }
 })
-app.get('/api/proxy-hls', async (req, res) => {
-    const encodedUrl = req.query.url;
-    if (!encodedUrl) return res.status(400).send("Missing URL");
+app.get("/api/proxy-hls", async (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).send("Missing URL");
 
-    const fullUrl = decodeURIComponent(encodedUrl);
-
+    const decodedUrl = decodeURIComponent(targetUrl);
     try {
-        const response = await axios.get(fullUrl, {
-            responseType: 'stream',
+        const response = await axios.get(decodedUrl, {
+            responseType: "text",
             headers: {
-                'User-Agent': 'Mozilla/5.0',
-                'Accept': 'application/vnd.apple.mpegurl,application/x-mpegURL,*/*'
+                "User-Agent": "Mozilla/5.0",
+                Accept: "application/vnd.apple.mpegurl"
             }
         });
 
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        res.setHeader("Content-Type", response.headers["content-type"] || "application/vnd.apple.mpegurl");
+        let content = response.data;
 
-        response.data.pipe(res);
+        // Base URL for relative links inside the .m3u8
+        const baseUrl = decodedUrl.substring(0, decodedUrl.lastIndexOf("/") + 1);
+
+        // Rewrite all segment or playlist URLs to go through your proxy again
+        content = content.replace(/^(?!#)(.*\.m3u8|.*\.ts)/gm, (line) => {
+            const absolute = new URL(line, baseUrl).href;
+            return `/api/proxy-hls?url=${encodeURIComponent(absolute)}`;
+        });
+
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.send(content);
     } catch (err) {
-        console.error("Proxy error:", err.message);
-        res.status(500).send("Proxy failed");
+        console.error("Proxy fetch error:", err.message);
+        res.status(500).send("Failed to fetch HLS");
     }
 });
 app.listen(3001, () => {
