@@ -161,6 +161,30 @@ const browser = await puppeteer.launch({
     res.status(500).json({ error: 'Failed to extract CloudStream video' });
   }
 });
+app.get('/api/proxy', async (req, res) => {
+  const { id, season, episode } = req.query;
+  try {
+    const response = await axios.get(`https://madplay.site/api/playsrc`, {
+      params: { id, season, episode },
+    });
+
+    res.json(response.data); // Return the data to your frontend
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching data' });
+  }
+});
+app.get('/api/madplay/movie', async (req, res) => {
+  const {id} = req.query;
+  try {
+    const response = await axios.get(`https://madplay.site/api/playsrc`, {
+      params: { id },
+    });
+
+    res.json(response.data); // Return the data to your frontend
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching data' });
+  }
+})
 
 app.listen(3001, () => {
   console.log('✅ Server running at http://localhost:3001');
