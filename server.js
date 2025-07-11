@@ -5,9 +5,33 @@ const cors = require("cors");
 const axiosRetry = require('axios-retry').default;
 require("dotenv").config();
 
+
 const app = express();
 app.use(cors());
+const API_KEY = '84TGIfWjI08m6NbYqvevGKgE05bG0QZg';
 
+app.get('/api/subtitles', async (req, res) => {
+  const { imdb_id } = req.query;
+
+  try {
+    const response = await axios.get(`https://api.opensubtitles.com/api/v1/subtitles`, {
+      params: {
+        imdb_id,
+        languages: 'en'
+      },
+      headers: {
+        'Api-Key': API_KEY,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'MinazukiApp v1.0.0' // 
+      }
+    });
+
+    res.json(response.data);
+  } catch (err) {
+    res.status(err.response?.status || 500).json({ error: err.message });
+  }
+});
 const TMDB_API_KEY = process.env.TMDB_API_KEY || "YOUR_TMDB_KEY";
 axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
 
