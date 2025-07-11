@@ -188,6 +188,30 @@ app.get('/api/madplay/movie', async (req, res) => {
     res.status(500).json({ error: 'Error fetching data' });
   }
 })
+app.get('/api/proxy-hls', async (req, res) => {
+  const rawUrl = req.query.url;
+  if (!rawUrl) return res.status(400).send("Missing URL");
+
+  const fullUrl = decodeURIComponent(rawUrl);
+  try {
+    const response = await axios.get(fullUrl, {
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/vnd.apple.mpegurl,application/x-mpegURL,application/json,text/plain,*/*'
+      }
+    });
+
+    // CORS-safe response
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Content-Type", response.headers["content-type"] || "application/vnd.apple.mpegurl");
+
+    response.data.pipe(res);
+  } catch (err) {
+    console.error("Proxy HLS error:", err.message);
+    res.status(500).send("Proxy failed");
+  }
+});
 
 app.listen(3001, () => {
   console.log('✅ Server running at http://localhost:3001');
