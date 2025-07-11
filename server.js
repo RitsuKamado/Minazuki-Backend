@@ -2,12 +2,14 @@ const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const cors = require("cors");
+const axiosRetry = require('axios-retry').default;
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || "YOUR_TMDB_KEY";
+axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
 
 app.get("/api/popular", async (req, res) => {
   try {
@@ -173,6 +175,7 @@ app.get('/api/proxy', async (req, res) => {
     res.status(500).json({ error: 'Error fetching data' });
   }
 });
+
 app.get('/api/madplay/movie', async (req, res) => {
   const {id} = req.query;
   try {
