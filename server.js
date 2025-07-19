@@ -201,17 +201,37 @@ app.get('/api/proxy', async (req, res) => {
 });
 
 app.get('/api/madplay/movie', async (req, res) => {
-  const {id} = req.query;
+  const { id } = req.query;
+
   try {
     const response = await axios.get(`https://madplay.site/api/playsrc`, {
       params: { id },
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://madplay.site/',
+        'Accept': 'application/json'
+      }
     });
 
-    res.json(response.data); // Return the data to your frontend
+    res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching data' });
+    console.error("❌ Madplay fetch failed:");
+    if (error.response) {
+      console.error("🔴 Status:", error.response.status);
+      console.error("🔴 Data:", error.response.data);
+      res.status(error.response.status).json({
+        error: 'Madplay responded with an error',
+        details: error.response.data
+      });
+    } else if (error.request) {
+      console.error("🔴 No response received:", error.request);
+      res.status(500).json({ error: 'No response from Madplay' });
+    } else {
+      console.error("🔴 Error:", error.message);
+      res.status(500).json({ error: error.message });
+    }
   }
-})
+});
 app.get("/api/proxy-hls", async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send("Missing URL");
