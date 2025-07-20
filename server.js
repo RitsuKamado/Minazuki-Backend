@@ -192,6 +192,11 @@ app.get('/api/proxy', async (req, res) => {
   try {
     const response = await axios.get(`https://madplay.site/api/playsrc`, {
       params: { id, season, episode },
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://madplay.site/',
+        'Accept': 'application/json'
+      }
     });
 
     res.json(response.data); // Return the data to your frontend
