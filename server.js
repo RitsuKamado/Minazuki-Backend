@@ -188,20 +188,58 @@ const browser = await puppeteer.launch({
   }
 });
 app.get('/api/proxy', async (req, res) => {
-  const { id, season, episode } = req.query;
+  const { id, season, episode, type } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: "Missing required TMDB ID" });
+  }
+
   try {
-    const response = await axios.get(`https://madplay.site/api/playsrc`, {
-      params: { id, season, episode },
+    // Try /rogflix first
+    const rogflixRes = await axios.get(`https://madplay.site/api/rogflix`, {
+      params: { id, season, episode, type },
       headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Referer': 'https://madplay.site/',
-        'Accept': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'https://uembed.site/',
+        'Origin': 'https://uembed.site',
+        'Accept': 'application/json',
       }
     });
 
-    res.json(response.data); // Return the data to your frontend
+    if (rogflixRes.data && Object.keys(rogflixRes.data).length > 0) {
+      return res.json(rogflixRes.data); // ✅ Success from rogflix
+    }
+
+    console.warn("ℹ️ Empty result from /rogflix, trying /playsrc");
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching data' });
+    console.warn("⚠️ /rogflix failed, falling back to /playsrc");
+  }
+
+  // Fallback to /playsrc
+  try {
+    const fallbackParams = season && episode
+      ? { id, season, episode }
+      : { id };
+
+    const playsrcRes = await axios.get(`https://madplay.site/api/playsrc`, {
+      params: fallbackParams,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'https://uembed.site/',
+        'Origin': 'https://uembed.site',
+        'Accept': 'application/json',
+      }
+    });
+
+    if (playsrcRes.data && Object.keys(playsrcRes.data).length > 0) {
+      return res.json(playsrcRes.data); // ✅ Fallback success
+    } else {
+      console.error("❌ Both /rogflix and /playsrc returned empty");
+      return res.status(502).json({ error: "No valid stream found" });
+    }
+  } catch (error) {
+    console.error("❌ Both sources failed:", error.message);
+    return res.status(502).json({ error: "Failed to fetch from both sources" });
   }
 });
 
@@ -245,33 +283,48 @@ app.get('/api/madplay/movie', async (req, res) => {
   }
 
   try {
-    const response = await axios.get(`https://madplay.site/api/playsrc`, {
+    // First try: /playsrc
+    const playsrcRes = await axios.get(`https://madplay.site/api/playsrc`, {
       params: { id },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         'Referer': 'https://uembed.site/',
         'Origin': 'https://uembed.site',
-        'Accept': '*/*',
-      },
+        'Accept': 'application/json',
+      }
     });
 
-    res.json(response.data);
-  } catch (error) {
-    console.error("❌ Madplay fetch failed:");
-    if (error.response) {
-      console.error("🔴 Status:", error.response.status);
-      console.error("🔴 Data:", error.response.data);
-      res.status(error.response.status).json({
-        error: 'Madplay responded with an error',
-        details: error.response.data
-      });
-    } else if (error.request) {
-      console.error("🔴 No response received:", error.request);
-      res.status(500).json({ error: 'No response from Madplay' });
-    } else {
-      console.error("🔴 Error:", error.message);
-      res.status(500).json({ error: error.message });
+    if (playsrcRes.data && Object.keys(playsrcRes.data).length > 0) {
+      return res.json(playsrcRes.data); // ✅ Successful response
     }
+
+    console.warn("ℹ️ Empty result from /playsrc, trying /rogplay");
+  } catch (error) {
+    console.warn("⚠️ /playsrc failed, trying /rogplay instead");
+  }
+
+  // Fallback to /rogplay
+  try {
+    const rogplayRes = await axios.get(`https://madplay.site/api/rogflix`, {
+      params: { id, type: 'movie' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'https://uembed.site/',
+        'Origin': 'https://uembed.site',
+        'Accept': 'application/json',
+      }
+    });
+
+    if (rogplayRes.data && Object.keys(rogplayRes.data).length > 0) {
+      return res.json(rogplayRes.data); // ✅ Fallback worked
+    } else {
+      console.error("❌ Both /playsrc and /rogplay returned empty");
+      return res.status(502).json({ error: "No valid stream found" });
+    }
+  } catch (error) {
+    console.error("❌ Both sources failed:");
+    console.error(error.message);
+    return res.status(502).json({ error: "Failed to fetch movie from both sources" });
   }
 });
 app.get("/api/proxy-hls", async (req, res) => {
