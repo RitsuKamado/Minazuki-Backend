@@ -205,7 +205,7 @@ app.get('/api/proxy', async (req, res) => {
   }
 });
 
-app.get('/api/madplay/movie', async (req, res) => {
+app.get('/api/madplay/movieold', async (req, res) => {
   const { id } = req.query;
 
   try {
@@ -237,15 +237,22 @@ app.get('/api/madplay/movie', async (req, res) => {
     }
   }
 });
-app.get('/api/madplay/backend', async (req, res) => {
+app.get('/api/madplay/movie', async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: "Missing TMDB ID in query" });
+  }
+
   try {
-    const response = await axios.get(`https://madplay.site/api/backendfetch`, {
-      params: req.query, // Passes both id and requestID (and any other query params)
+    const response = await axios.get(`https://madplay.site/api/playsrc`, {
+      params: { id },
       headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Referer': 'https://madplay.site/',
-        'Accept': 'application/json'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'https://uembed.site/',
+        'Origin': 'https://uembed.site',
+        'Accept': '*/*',
+      },
     });
 
     res.json(response.data);
