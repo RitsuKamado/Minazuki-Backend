@@ -275,6 +275,7 @@ app.get('/api/madplay/movieold', async (req, res) => {
     }
   }
 });
+
 app.get('/api/madplay/movie', async (req, res) => {
   const { id } = req.query;
 
@@ -359,6 +360,36 @@ app.get("/api/proxy-hls", async (req, res) => {
         console.error("Proxy fetch error:");
         res.status(500).send("Failed to fetch HLS");
     }
+});
+app.get('/api/validate-availability', async (req, res) => {
+  const ids = req.query.ids?.split(',') || [];
+  if (!ids.length) return res.status(400).json({ error: 'Missing TMDB IDs' });
+
+  const checkAvailability = async (id) => {
+    try {
+      const movieCheck = await axios.head(`https://minazuki-backend-production.up.railway.app/api/madplay/movie?id=${id}`);
+      if (movieCheck.status === 200) return id;
+    } catch {}
+
+    try {
+      const seriesCheck = await axios.head(`https://minazuki-backend-production.up.railway.app/api/episodes/${id}`);
+      if (seriesCheck.status === 200) return id;
+    } catch {}
+
+    return null;
+  };
+
+  try {
+    const checks = await Promise.allSettled(ids.map(checkAvailability));
+    const validIds = checks
+      .filter(result => result.status === 'fulfilled' && result.value)
+      .map(result => result.value);
+
+    res.json({ validIds });
+  } catch (error) {
+    console.error("❌ Validation error:", error.message);
+    res.status(500).json({ error: "Failed to validate availability" });
+  }
 });
 app.listen(3001, () => {
   console.log('✅ Server running at http://localhost:3001');
