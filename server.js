@@ -86,47 +86,27 @@ app.get('/api/episodes/:tmdbId', async (req, res) => {
   const tmdbId = req.params.tmdbId;
   const embedUrl = `https://vidsrc.me/embed/tv/${tmdbId}`;
 
-const browser = await puppeteer.launch({
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',     // add this
-    '--disable-accelerated-2d-canvas',
-    '--no-zygote',
-    '--single-process',
-    '--no-first-run',
-    '--no-default-browser-check'
-  ]
-});
-  const page = await browser.newPage();
-  await page.goto(embedUrl, { waitUntil: 'networkidle2' });
-
   try {
-    // Wait for the episode list container to load
-    await page.waitForSelector('#eps', { timeout: 10000 });
-
-    // Extract the season and episode data
-    const episodes = await page.evaluate(() => {
-      const eps = [];
-      const items = document.querySelectorAll('#eps .ep');
-      items.forEach(el => {
-        eps.push({
-          season: el.getAttribute('data-s'),
-          episode: el.getAttribute('data-e'),
-          title: el.textContent.trim(),
-          iframe: el.getAttribute('data-iframe'),
-        });
-      });
-      return eps;
+    const { data: html } = await axios.get(embedUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" }
     });
 
-    await browser.close();
+    const $ = cheerio.load(html);
+    const episodes = [];
+
+    $('#eps .ep').each((_, el) => {
+      episodes.push({
+        season: $(el).attr('data-s'),
+        episode: $(el).attr('data-e'),
+        title: $(el).text().trim(),
+        iframe: $(el).attr('data-iframe'),
+      });
+    });
+
     res.json({ episodes });
 
   } catch (err) {
-    await browser.close();
-    console.error('Puppeteer error:');
+    console.error('Cheerio scraping error:');
     res.status(500).json({ error: 'Failed to extract episode data' });
   }
 });
@@ -135,58 +115,27 @@ app.get('/api/tv/:tmdbId', async (req, res) => {
   const { season = 1, episode = 1 } = req.query;
 
   const embedUrl = `https://hyhd.org/embed/tv?imdb=${tmdbId}&season=${season}&episode=${episode}&color=e600e6`;
-const browser = await puppeteer.launch({
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',     // add this
-    '--disable-accelerated-2d-canvas',
-    '--no-zygote',
-    '--single-process',
-    '--no-first-run',
-    '--no-default-browser-check'
-  ]
-  });
-
-  
-  const page = await browser.newPage();
-  await page.goto(embedUrl, { waitUntil: 'networkidle2' });
 
   try {
-    // Wait for source options to load
-    await page.waitForSelector('iframe, .cloudicon, .dropdown, button', { timeout: 10000 });
-
-    // Click the CloudStream Pro button if necessary
-    const cloudStreamSelector = await page.$$eval('button, a', elements =>
-      elements.find(el => el.textContent?.toLowerCase().includes('cloudstream'))
-    );
-
-    if (cloudStreamSelector) {
-      await cloudStreamSelector.click();
-      await page.waitForTimeout(3000); // wait for iframe to load
-    }
-
-    // Now extract the CloudStream iframe
-    const frameSrc = await page.evaluate(() => {
-      const iframe = document.querySelector('iframe');
-      return iframe ? iframe.src : null;
+    const { data: html } = await axios.get(embedUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" }
     });
 
-    await browser.close();
+    const $ = cheerio.load(html);
+    const iframeSrc = $('iframe').attr('src');
 
-    if (!frameSrc) {
-      return res.status(404).json({ error: 'CloudStream iframe not found' });
+    if (!iframeSrc) {
+      return res.status(404).json({ error: 'Iframe not found (possibly rendered with JS)' });
     }
 
-    res.json({ video: frameSrc });
+    res.json({ video: iframeSrc.startsWith('//') ? `https:${iframeSrc}` : iframeSrc });
 
   } catch (err) {
-    await browser.close();
-    console.error('Puppeteer error:');
-    res.status(500).json({ error: 'Failed to extract CloudStream video' });
+    console.error('Cheerio iframe error:', err.message);
+    res.status(500).json({ error: 'Failed to extract video' });
   }
 });
+
 app.get('/api/proxy', async (req, res) => {
   const { id, season, episode, type } = req.query;
 
