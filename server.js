@@ -84,7 +84,7 @@ app.get("/api/video/:tmdbId", async (req, res) => {
 });
 app.get('/api/episodes/:tmdbId', async (req, res) => {
   const tmdbId = req.params.tmdbId;
-  const embedUrl = `https://hyhd.org/embed/tv/${tmdbId}`;
+  const embedUrl = `https://vidsrc.me/embed/tv/${tmdbId}`;
 
 const browser = await puppeteer.launch({
   headless: true,
