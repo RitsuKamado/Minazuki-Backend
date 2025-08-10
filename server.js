@@ -338,7 +338,7 @@ app.get("/api/proxy-hls/autoembed", async (req, res) => {
 
             // Replace each line that looks like a .ts URL
             playlist = playlist.replace(/(https?:\/\/[^\s]+)/g, (match) => {
-                return `http://localhost:3001/api/proxy-hls/autoembed?url=${encodeURIComponent(match)}`;
+                return `https://minazuki-backend.onrender.com/api/proxy-hls/autoembed?url=${encodeURIComponent(match)}`;
             });
 
             res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
