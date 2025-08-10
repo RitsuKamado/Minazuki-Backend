@@ -310,6 +310,50 @@ app.get("/api/proxy-hls", async (req, res) => {
         res.status(500).send("Failed to fetch HLS");
     }
 });
+// Proxy endpoint for both .m3u8 and .ts files
+app.get("/api/proxy-hls/autoembed", async (req, res) => {
+    let targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).send("Missing URL");
+
+    try {
+        if (!targetUrl.includes("vid1.site/proxy/")) {
+            targetUrl = decodeURIComponent(targetUrl);
+        }
+
+        const response = await axios.get(targetUrl, {
+            responseType: "arraybuffer",
+            headers: {
+                "User-Agent": "Mozilla/5.0",
+                "Referer": "https://autoembed.pro/",
+                "Origin": "https://autoembed.pro"
+            }
+        });
+
+        const contentType = response.headers["content-type"] || "";
+        res.setHeader("Access-Control-Allow-Origin", "*");
+
+        // If it's an .m3u8 playlist, rewrite .ts URLs to go through our proxy
+        if (contentType.includes("application/vnd.apple.mpegurl") || targetUrl.endsWith(".m3u8")) {
+            let playlist = response.data.toString();
+
+            // Replace each line that looks like a .ts URL
+            playlist = playlist.replace(/(https?:\/\/[^\s]+)/g, (match) => {
+                return `http://localhost:3001/api/proxy-hls/autoembed?url=${encodeURIComponent(match)}`;
+            });
+
+            res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+            res.send(playlist);
+        } else {
+            // Pass-through for .ts and other files
+            res.setHeader("Content-Type", contentType);
+            res.send(response.data);
+        }
+
+    } catch (err) {
+        console.error("Proxy error:", err.message);
+        res.status(500).send("Error fetching the stream");
+    }
+});
 
 app.listen(3001, () => {
   console.log('✅ Server running at http://localhost:3001');
