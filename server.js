@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 const cors = require("cors");
 const axiosRetry = require('axios-retry').default;
 require("dotenv").config();
-
+const TMDB = b3fc5d9105412d819270f28e57e9e325
 
 const app = express();
 app.use(cors());
@@ -38,7 +38,7 @@ axiosRetry(axios, { retries: 5, retryDelay: axiosRetry.exponentialDelay });
 app.get("/api/popular", async (req, res) => {
   try {
     const response = await axios.get(
-      `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&language=en-US&page=1`
+      `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB}&language=en-US&page=1`
     );
     res.json(response.data.results);
   } catch (err) {
@@ -51,7 +51,7 @@ app.get("/api/search", async (req, res) => {
   const query = req.query.query;
   try {
     const response = await axios.get(
-      `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&page=1`
+      `https://api.themoviedb.org/3/search/multi?api_key=${TMDB}&query=${encodeURIComponent(query)}&language=en-US&page=1`
     );
     
     res.json(response.data.results);
