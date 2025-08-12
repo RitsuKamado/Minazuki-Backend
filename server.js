@@ -234,7 +234,7 @@ app.get('/api/madplay/movie', async (req, res) => {
 
   try {
     // First try: /playsrc
-    const playsrcRes = await axios.get(`https://madplay.site/api/playsrc`, {
+    const playsrcRes = await axios.get(`https://madplay.site/api/vidz`, {
       params: { id },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -248,9 +248,9 @@ app.get('/api/madplay/movie', async (req, res) => {
       return res.json(playsrcRes.data); // ✅ Successful response
     }
 
-    console.warn("ℹ️ Empty result from /playsrc, trying /rogplay");
+    console.warn("ℹ️ Empty result from /playsrc, trying /rogflix");
   } catch (error) {
-    console.warn("⚠️ /playsrc failed, trying /rogplay instead");
+    console.warn("⚠️ /playsrc failed, trying /rogflix instead");
   }
 
   // Fallback to /rogplay
