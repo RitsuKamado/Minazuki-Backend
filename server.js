@@ -60,7 +60,6 @@ app.get("/api/search", async (req, res) => {
     res.status(500).json({ error: "Search failed" });
   }
 });
-const puppeteer = require("puppeteer");
 
 app.get("/api/video/:tmdbId", async (req, res) => {
   const tmdbId = req.params.tmdbId;
@@ -392,6 +391,13 @@ app.get("/api/proxy-hls1", async (req, res) => {
         });
 
         res.status(response.status);
+                // When client closes connection, destroy the axios stream to avoid leaks
+        req.on('close', () => {
+            if (response.data.destroy) {
+                response.data.destroy();
+                console.log("🚨 Client disconnected, destroyed axios stream.");
+            }
+        });
         response.data.pipe(res);
 
     } catch (err) {
