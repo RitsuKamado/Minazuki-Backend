@@ -53,6 +53,7 @@ app.get("/api/search", async (req, res) => {
     const response = await axios.get(
       `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&page=1`
     );
+    
     res.json(response.data.results);
   } catch (err) {
     console.error("Search failed:");
@@ -75,6 +76,7 @@ app.get("/api/video/:tmdbId", async (req, res) => {
 
     if (!iframeSrc) return res.status(404).json({ error: "Iframe not found" });
     if (iframeSrc.startsWith("//")) iframeSrc = "https:" + iframeSrc;
+    console.log(`🎬 Playing successfully from /video: TMDB ${tmdbId}`);
     res.json({ video: iframeSrc });
 
   } catch (err) {
@@ -145,7 +147,7 @@ app.get('/api/proxy', async (req, res) => {
 
   try {
     // Try /rogflix first
-    const rogflixRes = await axios.get(`https://madplay.site/api/rogflix`, {
+    const rogflixRes = await axios.get(`https://madplay.site/api/vidz`, {
       params: { id, season, episode, type },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -156,6 +158,7 @@ app.get('/api/proxy', async (req, res) => {
     });
 
     if (rogflixRes.data && Object.keys(rogflixRes.data).length > 0) {
+      console.log(`🎬 Playing successfully from /vidz: ${id}`);
       return res.json(rogflixRes.data); // ✅ Success from rogflix
     }
 
@@ -181,6 +184,7 @@ app.get('/api/proxy', async (req, res) => {
     });
 
     if (playsrcRes.data && Object.keys(playsrcRes.data).length > 0) {
+      console.log(`🎬 Playing successfully from /playsrc: ${id}`);
       return res.json(playsrcRes.data); // ✅ Fallback success
     } else {
       console.error("❌ Both /rogflix and /playsrc returned empty");
@@ -245,6 +249,7 @@ app.get('/api/madplay/movie', async (req, res) => {
     });
 
     if (playsrcRes.data && Object.keys(playsrcRes.data).length > 0) {
+      console.log(`🎬 Playing successfully from /vidz (movie): ${id}`);
       return res.json(playsrcRes.data); // ✅ Successful response
     }
 
@@ -266,6 +271,7 @@ app.get('/api/madplay/movie', async (req, res) => {
     });
 
     if (rogplayRes.data && Object.keys(rogplayRes.data).length > 0) {
+      console.log(`🎬 Playing successfully from /rogflix (movie fallback): ${id}`);
       return res.json(rogplayRes.data); // ✅ Fallback worked
     } else {
       console.error("❌ Both /playsrc and /rogplay returned empty");
@@ -301,7 +307,9 @@ app.get("/api/proxy-hls", async (req, res) => {
             const absolute = new URL(line, baseUrl).href;
             return `/api/proxy-hls?url=${encodeURIComponent(absolute)}`;
         });
-
+        if (content.includes(".m3u8") || content.includes(".ts")) {
+           console.log(`✅ HLS content fetched successfully from: /proxy-hls`);
+        }
         res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.send(content);
@@ -338,13 +346,14 @@ app.get("/api/proxy-hls/autoembed", async (req, res) => {
 
             // Replace each line that looks like a .ts URL
             playlist = playlist.replace(/(https?:\/\/[^\s]+)/g, (match) => {
-                return `https://minazuki-backend.onrender.com/api/proxy-hls/autoembed?url=${encodeURIComponent(match)}`;
+                return `https://minazuki-backend-72y0.onrender.com/api/proxy-hls/autoembed?url=${encodeURIComponent(match)}`;
             });
-
+             console.log(`✅ Autoembed playlist fetched successfully: /autoembed`);
             res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
             res.send(playlist);
         } else {
             // Pass-through for .ts and other files
+            console.log(`📦 Autoembed segment fetched: /autoembed`);
             res.setHeader("Content-Type", contentType);
             res.send(response.data);
         }
@@ -375,6 +384,7 @@ app.get("/api/proxy-hls1", async (req, res) => {
                 ...(range ? { Range: range } : {})
             }
         });
+        console.log(`📦 Video segment/stream fetched successfully: ${targetUrl}`);
 
         // Pass through important headers for video streaming
         Object.keys(response.headers).forEach(header => {
