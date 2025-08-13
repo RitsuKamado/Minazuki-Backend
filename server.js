@@ -335,7 +335,7 @@ app.get("/api/proxy-hls/autoembed", async (req, res) => {
                 "Origin": "https://autoembed.pro"
             }
         });
-
+        
         const contentType = response.headers["content-type"] || "";
         res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -354,6 +354,9 @@ app.get("/api/proxy-hls/autoembed", async (req, res) => {
             // Pass-through for .ts and other files
             console.log(`📦 Autoembed segment fetched: /autoembed`);
             res.setHeader("Content-Type", contentType);
+            req.on("close", () => {
+                if (response.data.destroy) response.data.destroy();
+            });
             res.send(response.data);
         }
 
@@ -383,7 +386,6 @@ app.get("/api/proxy-hls1", async (req, res) => {
                 ...(range ? { Range: range } : {})
             }
         });
-        console.log(`📦 Video segment/stream fetched successfully: ${targetUrl}`);
 
         // Pass through important headers for video streaming
         Object.keys(response.headers).forEach(header => {
@@ -395,7 +397,6 @@ app.get("/api/proxy-hls1", async (req, res) => {
         req.on('close', () => {
             if (response.data.destroy) {
                 response.data.destroy();
-                console.log("🚨 Client disconnected, destroyed axios stream.");
             }
         });
         response.data.pipe(res);
